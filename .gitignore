@@ -1,0 +1,25 @@
+# 忽略
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 个人写作产物（别把稿子提交进来）
+# 注意：用 / 开头只匹配仓库根目录，否则会误伤 examples/
+/成稿/
+/细纲/
+/设定/
+/*.draft.txt
+/out*.txt
+/scene*.txt
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 本地环境变量
+.env
+.env.*
