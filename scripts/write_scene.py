@@ -32,56 +32,48 @@ STYLES = {
     "动作": "快门式节奏，短句、动词密集，空间关系清晰，强调身体的重量与惯性",
 }
 
-SYSTEM_PROMPT = """你是一名顶尖的中文小说写手，唯一的工作是【把已有的细纲扩写成成稿段落】。
+SYSTEM_PROMPT = """你是一名中文小说写手。你会拿到一段已经写好的细纲，把它写成小说正文。
 
-职责边界（必须严格遵守）：
-1. 细纲里已经写明的剧情、人物、动作、因果、结局，全部保留，不得改写、不得增删剧情走向。
-2. 细纲没写的东西，你只能补充**感官细节、动作过程、环境氛围、人物生理反应、对话的语气与停顿**。
-3. 严禁新增：新的情节转折、新的人物、新的线索、新的因果解释、新的决策与动机。如果细纲到这里就结束，你就停在细纲结束的地方，可以停在意象或动作上，不许自己"往前推剧情"。
-4. 严禁输出大纲、分章、剧情建议、"可以这样改"之类的分析。只输出小说正文。
-5. 人称与称谓严格跟随【上下文】；上下文未给出时默认第三人称限知视角。
-6. 不写"总结""本章讲述""（未完待续）"这类元话语；不写标题（除非明确要求）。
-7. 直接输出正文，不要任何前言、解释、Markdown 代码块围栏。"""
+- 按细纲写，不要改剧情走向，也不要自己往下编情节。
+- 细纲没写到的地方，用细节把它写实：动作、环境、感官、语气。
+- 只输出正文，不要标题、不要说明。"""
 
 
 def length_brief(words):
-    """篇幅只是一个参考提示，不作为验收标准。"""
-    if not words:
-        return []
-    paras = max(2, round(words / 170))
-    return [
-        f"- 参考篇幅：约 {words} 字（约 {paras} 个自然段）。这是参考不是指标："
-        "写完细纲就停，**不得为了凑字数而重复、拉长或加无意义的抒情**。",
-    ]
+    """已不用（篇幅已合入 【写法】 一行），保留以兼容旧调用。"""
+    return []
 
 
 def build_messages(args, outline, context, continue_text):
-    style_desc = STYLES.get(args.style, args.style)
+    """提示词保持短：模型只需要知道【设定】【细纲】【怎么写】三件事。"""
     parts = []
 
     if context:
-        parts.append("【上下文 / 世界观与人物设定】\n" + context.strip())
+        parts.append("【设定】\n" + context.strip())
     if continue_text:
-        # 长文只取尾部，控制 token 开销
         tail = continue_text.strip()
         if len(tail) > 3000:
             tail = "……" + tail[-3000:]
-        parts.append(
-            "【紧接在前面的原文（不要重复它，直接往下续写，保持同一语气与视角）】\n" + tail
-        )
+        parts.append("【前文，接着往下写，不要重复】\n" + tail)
 
-    parts.append("【细纲（唯一剧情依据，不可改动走向）】\n" + outline.strip())
+    parts.append("【细纲】\n" + outline.strip())
 
-    brief = ["【写作要求】", f"- 文风：{style_desc}"]
-    brief += length_brief(args.words)
+    # 一行写完，不堆约束
+    how = [STYLES.get(args.style, args.style)]
+    if args.words:
+        how.append(f"约 {args.words} 字")
     if args.pov:
-        brief.append(f"- 视角：{args.pov}")
-    if args.avoid:
-        brief.append(f"- 禁止出现：{args.avoid}")
+        how.append(args.pov)
+    parts.append("【写法】" + "。".join(how) + "。")
+
+    # 可选补充，一行完事。注意：这类负向约束模型经常忽略，只能当参考
+    extra = []
     if args.notes:
-        brief.append(f"- 额外约束：{args.notes}")
-    brief.append("- 输出：只输出小说正文段落，不要标题、不要解释。")
-    parts.append("\n".join(brief))
+        extra.append(args.notes)
+    if args.avoid:
+        extra.append(f"不要写：{args.avoid}")
+    if extra:
+        parts.append("【补充】" + "。".join(extra) + "。")
 
     return [
         {"role": "system", "content": SYSTEM_PROMPT},
@@ -197,6 +189,8 @@ def main():
     p.add_argument("--stream", action="store_true", help="流式输出")
     p.add_argument("--expand", type=int, default=0, metavar="N",
                    help="原地加厚：把最短的 N 段重写得更厚（默认 0=不改动）")
+    p.add_argument("--from-file", dest="from_file", metavar="PATH",
+                   help="直接载入已有正文，跳过生成（配合 --expand 用于加厚旧稿）")
     p.add_argument("--check", action="store_true", help="只检查环境变量与鉴权")
     args = p.parse_args()
 
@@ -207,8 +201,10 @@ def main():
     if args.outline_file:
         outline = read(args.outline_file)
     outline = clean_outline(outline)
-    if not outline.strip():
+    if not outline.strip() and not args.from_file:
         p.error("必须提供 --outline 或 --outline-file")
+    if args.from_file and not os.path.exists(args.from_file):
+        p.error(f"--from-file 指定的文件不存在: {args.from_file}")
 
     context = read(args.context) if args.context else ""
     continue_text = read(args.continue_file) if args.continue_file else ""
@@ -264,7 +260,12 @@ def main():
         base_kwargs["seed"] = args.seed
 
     try:
-        text, finish = generate(messages, out_text=not args.out)
+        if args.from_file:
+            text = strip_wrapping(read(args.from_file))
+            finish = None
+            print(f"[载入] {args.from_file}（{char_count(text)} 字），跳过生成", file=sys.stderr)
+        else:
+            text, finish = generate(messages, out_text=not args.out)
     except sf_client.ApiError as e:
         print("API 错误:", e, file=sys.stderr)
         return 1
@@ -317,15 +318,12 @@ def main():
                         f"【全文】\n{text}\n\n"
                         f"【要重写的段落】\n<<<\n{orig}\n>>>\n\n"
                         "要求：\n"
-                        "1. 只重写这一段，**其他段落一个字都不要动、不要输出**。\n"
-                        "2. 这一段原有的事件、顺序、结尾位置全部不变，只把细节写厚："
-                        f"动作分解、感官（触/嗅/温/声）、环境与光线的变化，扩到约 {want} 字。\n"
-                        "3. 不新增人物、不新增物件、不推进时间、不把后面的情节提前写。\n"
-                        "4. **重写版的结尾必须与原段结尾落在同一位置**：原段停在哪里，重写版就停在哪里，"
-                        "不得把下一段的内容吸进来。\n"
-                        "5. **只用中文书写**，严禁夹任何外语单词或拼音。\n"
-                        f"6. 文风保持：{STYLES.get(args.style, args.style)}。\n"
-                        "7. 只输出重写后的这一段正文，不要 <<< >>> 标记、不要任何说明。"
+                        "1. 只重写段落 <<< >>> 里的那一段，其他段落不要输出。\n"
+                        "2. 事件、顺序、结尾位置都不变，只把细节写厚，扩到约 "
+                        f"{want} 字。不推进时间，不把下一段内容写进来。\n"
+                        "3. 只用中文。\n"
+                        f"4. 文风：{STYLES.get(args.style, args.style)}。\n"
+                        "只输出重写后的这一段正文。"
                     ),
                 },
             ]

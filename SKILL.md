@@ -107,8 +107,9 @@ python scripts/write_scene.py --outline-file s5.txt --style 悬疑 --pov "第三
 | `--style` | 文风预设，见下表；也可直接写自由描述 |
 | `--words` | 参考篇幅，默认 800（**只是提示，不是验收指标**） |
 | `--pov` | 视角说明 |
-| `--avoid` | 禁止出现的词/桥段 |
-| `--notes` | 其他约束 |
+| `--avoid` | 禁止出现的词/桥段（**模型常忽略，仅作提醒**） |
+| `--notes` | 其他约束（同上，仅供参考） |
+| `--from-file PATH` | 载入已有正文，跳过生成（配合 `--expand` 加厚旧稿） |
 | `-o, --out` | 输出文件（UTF-8） |
 | `--temperature` | 0~2，默认 0.85（描写任务适合偏高） |
 | `--top-p` / `--top-k` | 默认 0.9 / 50 |
@@ -163,7 +164,8 @@ python scripts/write_scene.py --outline-file s5.txt --style 悬疑 --pov "第三
 ```
 
 同理，缺什么它补什么：缺天气它下雨，缺光线它开路灯，缺情绪它抒情。
-不想让它补的，就在细纲或 `--avoid` 里堵死。
+不想让它补的，就在细纲里改用**正面写法**堵（写「她没说话，只是把盆端稳」而不是「不要写她惊讶」）——
+负向约束（`--avoid`）模型经常无视，不要依赖。
 
 ---
 
@@ -199,6 +201,9 @@ python scripts/write_scene.py --outline-file s5.txt --style 悬疑 --pov "第三
 
 ```bash
 python scripts/write_scene.py --outline-file 细纲/s3.txt --style 冷峻 --expand 1
+
+# 加厚一份已经写好的旧稿（不用重生成一遍）
+python scripts/write_scene.py --from-file 成稿/s3.txt --outline-file 细纲/s3.txt --expand 1
 ```
 
 脚本自带三道保险（全自动）：
