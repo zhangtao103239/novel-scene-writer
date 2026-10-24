@@ -17,7 +17,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import sf_client  # noqa: E402
 
-MODEL = "Qwen/Qwen2.5-72B-Instruct"
+MODEL = "deepseek-ai/DeepSeek-R1"
 WORDS_DEFAULT = 200
 
 SYSTEM_PROMPT = "你是一名中文小说写手。按下面的要求写小说正文。只输出正文，不要标题、不要说明。"
@@ -82,7 +82,7 @@ def cmd_check():
         print("鉴权失败:", e)
         return 1
     print(f"鉴权成功，可用 chat 模型 {len(models)} 个")
-    print(f"模型 {MODEL}:", "在列表中" if MODEL in models else "不在列表中")
+    print(f"默认模型 {MODEL}:", "在列表中" if MODEL in models else "不在列表中")
     return 0
 
 

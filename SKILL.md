@@ -9,7 +9,7 @@ compatibility: Windows / macOS / Linux，Python >= 3.9（纯标准库，零依�
 
 给一段提示词，出一段正文。就这一个用法。
 
-模型：`Qwen/Qwen2.5-72B-Instruct`（硅基流动）
+模型：`deepseek-ai/DeepSeek-R1`（推理模型，思维链开着）· 硅基流动
 
 ---
 
@@ -159,6 +159,7 @@ python scripts/write_scene.py "..." -o 段落.txt
 | `--style-ref PATH` | 文风参考（可选） |
 | `-w, --words` | 目标字数，默认 200 → 换算成 max_tokens |
 | `-o, --out PATH` | 输出文件（UTF-8） |
+| `--model` | 换模型，默认 `deepseek-ai/DeepSeek-R1` |
 | `--check` | 只检查环境变量 + 鉴权 |
 
 文件里 `#` 开头的行会被当注释丢掉。

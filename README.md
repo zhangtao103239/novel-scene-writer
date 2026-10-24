@@ -2,7 +2,7 @@
 
 **给一段提示词，出一段小说正文。**
 
-用 [硅基流动](https://siliconflow.cn) 的 `Qwen/Qwen2.5-72B-Instruct`。零依赖（纯 Python 标准库），Windows / macOS / Linux 通用，主程序约 130 行。
+用 [硅基流动](https://siliconflow.cn) 的 `deepseek-ai/DeepSeek-R1`（推理模型，思维链开着）。零依赖（纯 Python 标准库），Windows / macOS / Linux 通用，主程序约 130 行。
 
 ---
 
@@ -160,6 +160,7 @@ python scripts/write_scene.py "..." -o 段落.txt
 | `--style-ref PATH` | 文风参考（可选） |
 | `-w, --words` | 目标字数，默认 200 → 换算成 max_tokens |
 | `-o, --out PATH` | 输出文件（UTF-8） |
+| `--model` | 换模型，默认 `deepseek-ai/DeepSeek-R1` |
 | `--check` | 只检查环境变量 + 鉴权 |
 
 文件里 `#` 开头的行会被当注释丢掉。
