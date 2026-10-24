@@ -112,7 +112,8 @@ def main():
 
     try:
         kw = {}
-        if "Qwen3" in args.model:      # Qwen3 默认开思维链，会吃掉 max_tokens 额度
+        # 只有 Qwen3 原生对话模型才关思维链；R1 蒸馏版（名字里带 Qwen3）是推理模型，必须开着
+        if args.model.split("/")[-1].startswith("Qwen3"):
             kw["enable_thinking"] = False
         text, finish, usage = sf_client.chat(
             messages=messages,
@@ -134,9 +135,11 @@ def main():
               f"{before} → {char_count(text)} 字", file=sys.stderr)
 
     if usage:
+        rt = (usage.get("completion_tokens_details") or {}).get("reasoning_tokens")
         print(f"[用量] prompt={usage.get('prompt_tokens')} "
-              f"completion={usage.get('completion_tokens')} "
-              f"({char_count(text)} 字)", file=sys.stderr)
+              f"completion={usage.get('completion_tokens')}"
+              + (f" reasoning={rt}" if rt else "")
+              + f" ({char_count(text)} 字)", file=sys.stderr)
 
     if args.out:
         with open(args.out, "w", encoding="utf-8") as f:
