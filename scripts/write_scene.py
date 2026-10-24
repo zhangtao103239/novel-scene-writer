@@ -94,6 +94,7 @@ def main():
     p.add_argument("-w", "--words", type=int, default=WORDS_DEFAULT,
                    help=f"目标字数，默认 {WORDS_DEFAULT}")
     p.add_argument("-o", "--out", metavar="PATH", help="输出文件（UTF-8）")
+    p.add_argument("--model", default=MODEL, help=f"模型，默认 {MODEL}")
     p.add_argument("--check", action="store_true", help="只检查环境变量与鉴权")
     args = p.parse_args()
 
@@ -110,12 +111,16 @@ def main():
     messages = build_messages(prompt, read(args.style_ref) if args.style_ref else "")
 
     try:
+        kw = {}
+        if "Qwen3" in args.model:      # Qwen3 默认开思维链，会吃掉 max_tokens 额度
+            kw["enable_thinking"] = False
         text, finish, usage = sf_client.chat(
             messages=messages,
-            model=MODEL,
+            model=args.model,
             max_tokens=max_tokens,
             temperature=0.85,
             top_p=0.9,
+            **kw,
         )
     except sf_client.ApiError as e:
         print("API 错误:", e, file=sys.stderr)
